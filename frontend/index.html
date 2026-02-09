@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RLHF Pilot Study - Welcome</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 700px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 12px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .info-box h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+        
+        .info-box ul {
+            margin-left: 20px;
+            color: #666;
+            line-height: 1.8;
+        }
+        
+        .info-box p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        
+        .highlight-box {
+            background: #e3f2fd;
+            border: 2px solid #2196F3;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+        
+        .highlight-box strong {
+            color: #1565c0;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+        
+        .warning-box strong {
+            color: #856404;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .warning-box p {
+            color: #856404;
+            margin: 0;
+        }
+        
+        .start-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 24px;
+        }
+        
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Response Quality Study</h1>
+            <p>Help us understand how people evaluate AI-generated responses</p>
+        </div>
+        
+        <div id="errorMessage" class="error" style="display: none;"></div>
+        
+        <div class="info-box">
+            <h2>Study Overview</h2>
+            <p>You'll be evaluating AI-generated responses to various prompts. This helps researchers understand the best methods for collecting human feedback on AI systems.</p>
+            
+            <ul>
+                <li><strong>Duration:</strong> Approximately 15-20 minutes</li>
+                <li><strong>Compensation:</strong> As specified in your Prolific study</li>
+                <li><strong>Requirements:</strong> Desktop or laptop (mobile not recommended)</li>
+            </ul>
+        </div>
+        
+        <div class="highlight-box">
+            <strong>What You'll Do:</strong>
+            You'll evaluate AI responses using one or more rating methods. Each task involves reading a prompt and comparing or rating AI-generated responses.
+        </div>
+        
+        <div class="info-box">
+            <h2>Your Rights</h2>
+            <p><strong>Voluntary Participation:</strong> You may withdraw at any time without penalty.</p>
+            <p><strong>Privacy:</strong> Your responses are anonymous. We only collect your Prolific ID for payment purposes.</p>
+            <p><strong>Data Use:</strong> Your responses will be used for research purposes to improve AI feedback collection methods.</p>
+        </div>
+        
+        <div class="warning-box">
+            <strong>⚠️ Important:</strong>
+            <p>This study requires your Prolific ID. If you're not coming from Prolific, please do not proceed. If you are from Prolific and see an error, please contact the researcher.</p>
+        </div>
+        
+        <button class="start-btn" id="startBtn" onclick="startStudy()">Begin Study</button>
+        
+        <div class="footer">
+            <p>By clicking "Begin Study" you consent to participate in this research.</p>
+            <p style="margin-top: 8px; font-size: 12px;">Conducted by UNC Chapel Hill | IRB Protocol Pending</p>
+        </div>
+    </div>
+    
+    <script src="shared/api.js"></script>
+    <script>
+        // Get Prolific ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const prolificPid = urlParams.get('PROLIFIC_PID');
+        
+        // For testing without Prolific
+        const testMode = urlParams.get('test') === '1';
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        async function startStudy() {
+            const btn = document.getElementById('startBtn');
+            btn.disabled = true;
+            btn.textContent = 'Registering...';
+            
+            try {
+                // Validate Prolific ID
+                let pid = prolificPid;
+                if (!pid) {
+                    if (testMode) {
+                        pid = 'TEST_' + Date.now();
+                    } else {
+                        showError('No Prolific ID found. Please access this study through Prolific.');
+                        btn.disabled = false;
+                        btn.textContent = 'Begin Study';
+                        return;
+                    }
+                }
+                
+                // Register participant
+                const result = await PilotAPI.registerParticipant(pid);
+                
+                if (result.error) {
+                    showError('Registration failed: ' + result.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Begin Study';
+                    return;
+                }
+                
+                // Store participant info
+                localStorage.setItem('participant_id', result.participant_id);
+                localStorage.setItem('completion_code', result.completion_code);
+                localStorage.setItem('format_assigned', result.format_assigned);
+                localStorage.setItem('design_type', result.design_type);
+                
+                // Record consent
+                await PilotAPI.recordConsent(result.participant_id);
+                
+                // Redirect to instructions
+                window.location.href = 'instructions.html';
+                
+            } catch (error) {
+                console.error('Error starting study:', error);
+                showError('An error occurred. Please try again or contact the researcher.');
+                btn.disabled = false;
+                btn.textContent = 'Begin Study';
+            }
+        }
+        
+        // Check if already registered
+        window.addEventListener('load', () => {
+            const participantId = localStorage.getItem('participant_id');
+            if (participantId) {
+                // Already registered, skip to instructions
+                window.location.href = 'instructions.html';
+            }
+        });
+    </script>
+</body>
+</html>

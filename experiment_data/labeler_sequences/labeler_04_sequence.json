@@ -1,0 +1,250 @@
+{
+  "labeler_id": 4,
+  "format_order": [
+    "bws",
+    "peer_prediction",
+    "pairwise"
+  ],
+  "sequence": [
+    {
+      "annotation_number": 1,
+      "format": "bws",
+      "prompt_id": "prompt_091",
+      "prompt_text": "[Placeholder prompt 91] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 91",
+        "B": "Response B for prompt 91",
+        "C": "Response C for prompt 91",
+        "D": "Response D for prompt 91"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "annotation_number": 2,
+      "format": "bws",
+      "prompt_id": "prompt_140",
+      "prompt_text": "[Placeholder prompt 140] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 140",
+        "B": "Response B for prompt 140",
+        "C": "Response C for prompt 140",
+        "D": "Response D for prompt 140"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "annotation_number": 3,
+      "format": "bws",
+      "prompt_id": "prompt_119",
+      "prompt_text": "[Placeholder prompt 119] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 119",
+        "B": "Response B for prompt 119",
+        "C": "Response C for prompt 119",
+        "D": "Response D for prompt 119"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "annotation_number": 4,
+      "format": "bws",
+      "prompt_id": "prompt_017",
+      "prompt_text": "[Placeholder prompt 17] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 17",
+        "B": "Response B for prompt 17",
+        "C": "Response C for prompt 17",
+        "D": "Response D for prompt 17"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "annotation_number": 5,
+      "format": "bws",
+      "prompt_id": "prompt_083",
+      "prompt_text": "[Placeholder prompt 83] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 83",
+        "B": "Response B for prompt 83",
+        "C": "Response C for prompt 83",
+        "D": "Response D for prompt 83"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "annotation_number": 6,
+      "format": "peer_prediction",
+      "prompt_id": "prompt_095",
+      "prompt_text": "[Placeholder prompt 95] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 95",
+        "B": "Response B for prompt 95",
+        "C": "Response C for prompt 95",
+        "D": "Response D for prompt 95"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "annotation_number": 7,
+      "format": "peer_prediction",
+      "prompt_id": "prompt_121",
+      "prompt_text": "[Placeholder prompt 121] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 121",
+        "B": "Response B for prompt 121",
+        "C": "Response C for prompt 121",
+        "D": "Response D for prompt 121"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "annotation_number": 8,
+      "format": "peer_prediction",
+      "prompt_id": "prompt_113",
+      "prompt_text": "[Placeholder prompt 113] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 113",
+        "B": "Response B for prompt 113",
+        "C": "Response C for prompt 113",
+        "D": "Response D for prompt 113"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "annotation_number": 9,
+      "format": "peer_prediction",
+      "prompt_id": "prompt_128",
+      "prompt_text": "[Placeholder prompt 128] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 128",
+        "B": "Response B for prompt 128",
+        "C": "Response C for prompt 128",
+        "D": "Response D for prompt 128"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "annotation_number": 10,
+      "format": "peer_prediction",
+      "prompt_id": "prompt_133",
+      "prompt_text": "[Placeholder prompt 133] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 133",
+        "B": "Response B for prompt 133",
+        "C": "Response C for prompt 133",
+        "D": "Response D for prompt 133"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "annotation_number": 11,
+      "format": "pairwise",
+      "prompt_id": "prompt_008",
+      "prompt_text": "[Placeholder prompt 8] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 8",
+        "B": "Response B for prompt 8",
+        "C": "Response C for prompt 8",
+        "D": "Response D for prompt 8"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "annotation_number": 12,
+      "format": "pairwise",
+      "prompt_id": "prompt_003",
+      "prompt_text": "[Placeholder prompt 3] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 3",
+        "B": "Response B for prompt 3",
+        "C": "Response C for prompt 3",
+        "D": "Response D for prompt 3"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "annotation_number": 13,
+      "format": "pairwise",
+      "prompt_id": "prompt_101",
+      "prompt_text": "[Placeholder prompt 101] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 101",
+        "B": "Response B for prompt 101",
+        "C": "Response C for prompt 101",
+        "D": "Response D for prompt 101"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "annotation_number": 14,
+      "format": "pairwise",
+      "prompt_id": "prompt_026",
+      "prompt_text": "[Placeholder prompt 26] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 26",
+        "B": "Response B for prompt 26",
+        "C": "Response C for prompt 26",
+        "D": "Response D for prompt 26"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "easy"
+      }
+    },
+    {
+      "annotation_number": 15,
+      "format": "pairwise",
+      "prompt_id": "prompt_044",
+      "prompt_text": "[Placeholder prompt 44] This is a sample prompt text that would be replaced with actual RLHF prompts.",
+      "responses": {
+        "A": "Response A for prompt 44",
+        "B": "Response B for prompt 44",
+        "C": "Response C for prompt 44",
+        "D": "Response D for prompt 44"
+      },
+      "metadata": {
+        "source": "placeholder",
+        "difficulty": "medium"
+      }
+    }
+  ]
+}

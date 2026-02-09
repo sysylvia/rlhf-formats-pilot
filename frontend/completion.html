@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Complete</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 600px;
+            width: 100%;
+            padding: 50px 40px;
+            text-align: center;
+        }
+        
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: #28a745;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 48px;
+            color: white;
+        }
+        
+        h1 {
+            color: #28a745;
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+        
+        .message {
+            color: #666;
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+        
+        .completion-code-box {
+            background: #f8f9fa;
+            border: 3px solid #667eea;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+        
+        .completion-code-label {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        
+        .completion-code {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            letter-spacing: 3px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+        
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: all 0.2s;
+        }
+        
+        .copy-btn:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+        
+        .copy-btn.copied {
+            background: #28a745;
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 24px 0;
+        }
+        
+        .instructions strong {
+            color: #856404;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .instructions p {
+            color: #856404;
+            margin: 0;
+            line-height: 1.6;
+        }
+        
+        .thank-you {
+            color: #666;
+            font-size: 16px;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .prolific-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: all 0.2s;
+        }
+        
+        .prolific-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">✓</div>
+        
+        <h1>Study Complete!</h1>
+        
+        <p class="message">
+            Thank you for participating in our research. Your responses have been recorded successfully.
+        </p>
+        
+        <div class="completion-code-box">
+            <div class="completion-code-label">Your Completion Code</div>
+            <div class="completion-code" id="completionCode">Loading...</div>
+            <button class="copy-btn" id="copyBtn" onclick="copyCode()">Copy Code</button>
+        </div>
+        
+        <div class="instructions">
+            <strong>📋 Next Steps:</strong>
+            <p>
+                Return to Prolific and paste this completion code in the study page to receive your payment.
+                Do not close this window until you've copied the code!
+            </p>
+        </div>
+        
+        <a href="https://app.prolific.co/" target="_blank" class="prolific-link">Return to Prolific →</a>
+        
+        <div class="thank-you">
+            <p>Thank you for contributing to AI research!</p>
+            <p style="margin-top: 8px; font-size: 14px;">UNC Chapel Hill | Questions? Contact [researcher email]</p>
+        </div>
+    </div>
+    
+    <script src="shared/api.js"></script>
+    <script>
+        const participantId = localStorage.getItem('participant_id');
+        const completionCode = localStorage.getItem('completion_code');
+        
+        if (!participantId || !completionCode) {
+            alert('No completion data found. Please contact the researcher.');
+        }
+        
+        // Display completion code
+        document.getElementById('completionCode').textContent = completionCode;
+        
+        // Mark as completed on server (if not already done)
+        async function markComplete() {
+            try {
+                await PilotAPI.completeParticipant(participantId);
+            } catch (error) {
+                console.error('Error marking complete:', error);
+                // Non-fatal - completion already recorded during task submission
+            }
+        }
+        
+        function copyCode() {
+            const code = document.getElementById('completionCode').textContent;
+            const btn = document.getElementById('copyBtn');
+            
+            navigator.clipboard.writeText(code).then(() => {
+                btn.textContent = '✓ Copied!';
+                btn.classList.add('copied');
+                
+                setTimeout(() => {
+                    btn.textContent = 'Copy Code';
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = code;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                btn.textContent = '✓ Copied!';
+                btn.classList.add('copied');
+                
+                setTimeout(() => {
+                    btn.textContent = 'Copy Code';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+        
+        // Mark as complete on page load
+        markComplete();
+    </script>
+</body>
+</html>

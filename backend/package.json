@@ -1,0 +1,26 @@
+{
+  "name": "rlhf-pilot-backend",
+  "version": "1.0.0",
+  "description": "Backend API for RLHF formats comparison pilot study",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "init-db": "node src/utils/initDb.js",
+    "seed-prompts": "node src/utils/seedPrompts.js"
+  },
+  "keywords": ["rlhf", "annotation", "pilot-study"],
+  "author": "Sean Sylvia",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "better-sqlite3": "^9.2.2",
+    "uuid": "^9.0.1",
+    "helmet": "^7.1.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

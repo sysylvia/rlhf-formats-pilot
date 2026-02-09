@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Best-Worst Scaling - RLHF Annotation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .instructions strong {
+            color: #856404;
+        }
+        
+        .prompt-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .prompt-text {
+            font-size: 16px;
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        .responses-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .response-card {
+            border: 2px solid #e0e0e0;
+            padding: 20px;
+            border-radius: 8px;
+            background: white;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .response-card:hover {
+            border-color: #2196F3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .response-card.selected-best {
+            border-color: #4CAF50;
+            background: #f1f8f4;
+        }
+        
+        .response-card.selected-worst {
+            border-color: #f44336;
+            background: #fef1f0;
+        }
+        
+        .response-label {
+            font-weight: bold;
+            color: #2196F3;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .selection-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .badge-best {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .badge-worst {
+            background: #f44336;
+            color: white;
+        }
+        
+        .response-text {
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .selection-area {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .question {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .selection-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .selection-box {
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px dashed #ccc;
+            text-align: center;
+        }
+        
+        .selection-box.has-selection {
+            border-style: solid;
+        }
+        
+        .selection-box.best {
+            border-color: #4CAF50;
+            background: #f1f8f4;
+        }
+        
+        .selection-box.worst {
+            border-color: #f44336;
+            background: #fef1f0;
+        }
+        
+        .selection-label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        
+        .selection-label.best-label {
+            color: #4CAF50;
+        }
+        
+        .selection-label.worst-label {
+            color: #f44336;
+        }
+        
+        .selection-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .confidence-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .confidence-label {
+            font-weight: 500;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .confidence-slider {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            background: #ddd;
+            outline: none;
+            border-radius: 3px;
+        }
+        
+        .confidence-value {
+            font-weight: bold;
+            font-size: 18px;
+            color: #2196F3;
+            min-width: 40px;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+        
+        button {
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-submit {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-submit:hover:not(:disabled) {
+            background: #45a049;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .btn-submit:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .btn-skip {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-skip:hover {
+            background: #da190b;
+        }
+        
+        .btn-clear {
+            background: #9E9E9E;
+            color: white;
+        }
+        
+        .btn-clear:hover {
+            background: #757575;
+        }
+        
+        .progress {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .timer {
+            font-weight: bold;
+            color: #2196F3;
+        }
+        
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+            border-left: 4px solid #c62828;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⭐ Best-Worst Scaling Task</h1>
+        <p>Select the BEST and WORST responses from the set below</p>
+    </div>
+    
+    <div class="progress">
+        <span>Progress: <strong id="current-task">1</strong> / <strong id="total-tasks">100</strong></span>
+        <span class="timer">Time: <span id="timer">00:00</span></span>
+    </div>
+    
+    <div class="instructions">
+        <strong>Instructions:</strong> Read the prompt, then review all 4 responses (A, B, C, D). 
+        Click on the response that is <strong>BEST</strong> at addressing the prompt, then click on 
+        the response that is <strong>WORST</strong>. You must select different responses for best and worst.
+    </div>
+    
+    <div class="prompt-section">
+        <h3>Prompt:</h3>
+        <div class="prompt-text" id="prompt-text">
+            [Example] What are the main differences between classical and operant conditioning?
+        </div>
+    </div>
+    
+    <div class="responses-grid">
+        <div class="response-card" data-response="A" onclick="selectResponse('A')">
+            <div class="response-label">
+                <span>Response A</span>
+                <span class="selection-badge" id="badge-A"></span>
+            </div>
+            <div class="response-text" id="text-a">
+                [Example A] Classical conditioning involves associating an involuntary response with a stimulus, 
+                while operant conditioning associates a voluntary behavior with a consequence.
+            </div>
+        </div>
+        
+        <div class="response-card" data-response="B" onclick="selectResponse('B')">
+            <div class="response-label">
+                <span>Response B</span>
+                <span class="selection-badge" id="badge-B"></span>
+            </div>
+            <div class="response-text" id="text-b">
+                [Example B] The main difference is that classical conditioning focuses on automatic behaviors, 
+                whereas operant conditioning deals with voluntary behaviors that are shaped by consequences.
+            </div>
+        </div>
+        
+        <div class="response-card" data-response="C" onclick="selectResponse('C')">
+            <div class="response-label">
+                <span>Response C</span>
+                <span class="selection-badge" id="badge-C"></span>
+            </div>
+            <div class="response-text" id="text-c">
+                [Example C] Classical and operant conditioning are both forms of learning. Classical conditioning 
+                was discovered by Pavlov and operant by Skinner. They involve different types of stimuli.
+            </div>
+        </div>
+        
+        <div class="response-card" data-response="D" onclick="selectResponse('D')">
+            <div class="response-label">
+                <span>Response D</span>
+                <span class="selection-badge" id="badge-D"></span>
+            </div>
+            <div class="response-text" id="text-d">
+                [Example D] In classical conditioning, a neutral stimulus becomes associated with an unconditioned 
+                stimulus to produce a conditioned response. In operant conditioning, behavior is modified through 
+                reinforcement or punishment, with the learner actively operating on their environment.
+            </div>
+        </div>
+    </div>
+    
+    <div class="selection-area">
+        <div class="error-message" id="error-message"></div>
+        
+        <div class="question">Your Selections:</div>
+        
+        <div class="selection-summary">
+            <div class="selection-box" id="best-box">
+                <div class="selection-label best-label">BEST Response</div>
+                <div class="selection-value" id="best-value">Not selected</div>
+            </div>
+            
+            <div class="selection-box" id="worst-box">
+                <div class="selection-label worst-label">WORST Response</div>
+                <div class="selection-value" id="worst-value">Not selected</div>
+            </div>
+        </div>
+        
+        <div class="confidence-section">
+            <label class="confidence-label" for="confidence">How confident are you in your judgments?</label>
+            <div class="confidence-slider">
+                <span>Not confident</span>
+                <input type="range" id="confidence" min="1" max="5" value="3" step="1">
+                <span>Very confident</span>
+                <span class="confidence-value" id="confidence-value">3</span>
+            </div>
+        </div>
+        
+        <div class="buttons">
+            <button class="btn-clear" onclick="clearSelections()">Clear Selections</button>
+            <button class="btn-skip" onclick="skipTask()">Skip</button>
+            <button class="btn-submit" id="submit-btn" disabled onclick="submitResponse()">Submit</button>
+        </div>
+    </div>
+    
+    <script>
+        // State
+        let state = {
+            best: null,
+            worst: null,
+            selectionMode: null  // 'best' or 'worst' - which one we're selecting next
+        };
+        
+        // Timer
+        let startTime = Date.now();
+        setInterval(() => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            document.getElementById('timer').textContent = 
+                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }, 1000);
+        
+        // Confidence slider
+        document.getElementById('confidence').addEventListener('input', (e) => {
+            document.getElementById('confidence-value').textContent = e.target.value;
+        });
+        
+        // Response selection
+        function selectResponse(response) {
+            const errorMsg = document.getElementById('error-message');
+            errorMsg.classList.remove('show');
+            
+            // Determine what we're selecting
+            if (state.best === null) {
+                // First click - select as BEST
+                state.best = response;
+                state.selectionMode = 'best';
+            } else if (state.worst === null) {
+                // Second click - select as WORST
+                if (response === state.best) {
+                    errorMsg.textContent = 'Please select a different response for WORST (cannot be same as BEST)';
+                    errorMsg.classList.add('show');
+                    return;
+                }
+                state.worst = response;
+                state.selectionMode = 'worst';
+            } else {
+                // Both selected - toggle behavior
+                if (response === state.best) {
+                    // Deselect best
+                    state.best = null;
+                } else if (response === state.worst) {
+                    // Deselect worst
+                    state.worst = null;
+                } else {
+                    // Replace one of them
+                    // If we last selected worst, replace worst; otherwise replace best
+                    if (state.selectionMode === 'worst') {
+                        state.worst = response;
+                    } else {
+                        // Check if this would make best == worst
+                        if (response === state.worst) {
+                            state.worst = state.best;
+                            state.best = response;
+                        } else {
+                            state.best = response;
+                        }
+                    }
+                }
+            }
+            
+            updateUI();
+        }
+        
+        function updateUI() {
+            // Update response cards
+            const responses = ['A', 'B', 'C', 'D'];
+            responses.forEach(r => {
+                const card = document.querySelector(`[data-response="${r}"]`);
+                const badge = document.getElementById(`badge-${r}`);
+                
+                card.classList.remove('selected-best', 'selected-worst');
+                badge.textContent = '';
+                badge.className = 'selection-badge';
+                
+                if (state.best === r) {
+                    card.classList.add('selected-best');
+                    badge.textContent = 'BEST';
+                    badge.classList.add('badge-best');
+                } else if (state.worst === r) {
+                    card.classList.add('selected-worst');
+                    badge.textContent = 'WORST';
+                    badge.classList.add('badge-worst');
+                }
+            });
+            
+            // Update selection boxes
+            const bestBox = document.getElementById('best-box');
+            const worstBox = document.getElementById('worst-box');
+            const bestValue = document.getElementById('best-value');
+            const worstValue = document.getElementById('worst-value');
+            
+            if (state.best) {
+                bestBox.classList.add('has-selection', 'best');
+                bestValue.textContent = `Response ${state.best}`;
+            } else {
+                bestBox.classList.remove('has-selection', 'best');
+                bestValue.textContent = 'Not selected';
+            }
+            
+            if (state.worst) {
+                worstBox.classList.add('has-selection', 'worst');
+                worstValue.textContent = `Response ${state.worst}`;
+            } else {
+                worstBox.classList.remove('has-selection', 'worst');
+                worstValue.textContent = 'Not selected';
+            }
+            
+            // Enable submit button only if both selected
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = !(state.best && state.worst);
+        }
+        
+        function clearSelections() {
+            state.best = null;
+            state.worst = null;
+            state.selectionMode = null;
+            updateUI();
+            document.getElementById('error-message').classList.remove('show');
+        }
+        
+        function submitResponse() {
+            if (!state.best || !state.worst) {
+                alert('Please select both BEST and WORST responses');
+                return;
+            }
+            
+            const confidence = document.getElementById('confidence').value;
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            
+            const data = {
+                best: state.best,
+                worst: state.worst,
+                confidence: parseInt(confidence),
+                timeSeconds: elapsed,
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('Submitted:', data);
+            // In real implementation, send to backend
+            
+            alert(`Submitted!\nBest: ${state.best}\nWorst: ${state.worst}\nConfidence: ${confidence}\nTime: ${elapsed}s`);
+            
+            // Reset for next task (in real implementation)
+            // clearSelections();
+            // resetTimer();
+        }
+        
+        function skipTask() {
+            if (confirm('Are you sure you want to skip this task?')) {
+                console.log('Task skipped');
+                alert('Task skipped');
+            }
+        }
+        
+        // Initialize
+        updateUI();
+    </script>
+</body>
+</html>

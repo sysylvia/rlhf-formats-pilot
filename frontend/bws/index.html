@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RLHF Pilot - Best-Worst Scaling</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header .format-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .progress-bar {
+            background: #f0f0f0;
+            height: 8px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .prompt {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .prompt-label {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .prompt-text {
+            font-size: 18px;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            color: #856404;
+        }
+        
+        .instructions strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .responses-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+        
+        .response-card {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .response-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+        
+        .response-card.selected-best {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .response-card.selected-worst {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        .response-label {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: #667eea;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .selection-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .selection-badge.best {
+            background: #28a745;
+            color: white;
+        }
+        
+        .selection-badge.worst {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .response-text {
+            margin-top: 40px;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .timer {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+        
+        .completion-screen {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .completion-screen h2 {
+            color: #28a745;
+            font-size: 28px;
+            margin-bottom: 16px;
+        }
+        
+        .completion-code {
+            background: #f8f9fa;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Response Quality Evaluation</h1>
+            <div class="format-badge">Best-Worst Scaling</div>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar"></div>
+        </div>
+        
+        <div id="taskArea">
+            <div class="instructions">
+                <strong>Instructions:</strong>
+                Select the <span style="color: #28a745;">BEST response</span> and the <span style="color: #dc3545;">WORST response</span> from the four options below.
+            </div>
+            
+            <div class="prompt">
+                <div class="prompt-label">Prompt</div>
+                <div class="prompt-text" id="promptText">Loading...</div>
+            </div>
+            
+            <div class="responses-grid" id="responsesGrid"></div>
+            
+            <button class="submit-btn" id="submitBtn" disabled>Submit Selection</button>
+            
+            <div class="timer">Time elapsed: <span id="timer">0s</span></div>
+        </div>
+        
+        <div id="completionArea" style="display: none;">
+            <div class="completion-screen">
+                <h2>✓ Study Complete!</h2>
+                <p>Thank you for participating. Here is your completion code:</p>
+                <div class="completion-code" id="completionCode">Loading...</div>
+                <p>Please enter this code in Prolific to receive payment.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="../shared/api.js"></script>
+    <script>
+        // State
+        let participantId = null;
+        let currentTask = null;
+        let startTime = null;
+        let timerInterval = null;
+        let orderShown = 0;
+        let selectedBest = null;
+        let selectedWorst = null;
+        
+        // Get participant ID from URL or localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        participantId = urlParams.get('participant_id') || localStorage.getItem('participant_id');
+        
+        if (!participantId) {
+            alert('No participant ID found. Please start from the beginning.');
+            window.location.href = '../index.html';
+        }
+        
+        // Initialize
+        async function init() {
+            await loadNextTask();
+            startTimer();
+        }
+        
+        async function loadNextTask() {
+            try {
+                const result = await PilotAPI.getNextTask(participantId);
+                
+                if (result.done) {
+                    await showCompletion();
+                    return;
+                }
+                
+                currentTask = result.task;
+                orderShown++;
+                displayTask();
+                updateProgress();
+                resetTimer();
+                
+            } catch (error) {
+                console.error('Error loading task:', error);
+                alert('Failed to load task. Please refresh the page.');
+            }
+        }
+        
+        function displayTask() {
+            document.getElementById('promptText').textContent = currentTask.text;
+            
+            const responses = [
+                { id: 'A', text: currentTask.responses.a },
+                { id: 'B', text: currentTask.responses.b },
+                { id: 'C', text: currentTask.responses.c },
+                { id: 'D', text: currentTask.responses.d }
+            ];
+            
+            const grid = document.getElementById('responsesGrid');
+            grid.innerHTML = '';
+            
+            responses.forEach(response => {
+                const card = document.createElement('div');
+                card.className = 'response-card';
+                card.innerHTML = `
+                    <div class="response-label">${response.id}</div>
+                    <div class="response-text">${response.text}</div>
+                `;
+                
+                card.addEventListener('click', () => selectResponse(response.id, card));
+                grid.appendChild(card);
+            });
+            
+            selectedBest = null;
+            selectedWorst = null;
+            updateSubmitButton();
+        }
+        
+        function selectResponse(id, card) {
+            // Determine what to select (best or worst)
+            if (!selectedBest) {
+                // First click - select as best
+                selectedBest = id;
+                card.classList.add('selected-best');
+                const badge = document.createElement('div');
+                badge.className = 'selection-badge best';
+                badge.textContent = 'Best';
+                card.appendChild(badge);
+            } else if (selectedBest === id) {
+                // Clicking best again - deselect
+                selectedBest = null;
+                card.classList.remove('selected-best');
+                card.querySelector('.selection-badge')?.remove();
+            } else if (!selectedWorst) {
+                // Second click - select as worst
+                selectedWorst = id;
+                card.classList.add('selected-worst');
+                const badge = document.createElement('div');
+                badge.className = 'selection-badge worst';
+                badge.textContent = 'Worst';
+                card.appendChild(badge);
+            } else if (selectedWorst === id) {
+                // Clicking worst again - deselect
+                selectedWorst = null;
+                card.classList.remove('selected-worst');
+                card.querySelector('.selection-badge')?.remove();
+            } else {
+                // Both already selected - do nothing (user must deselect first)
+                return;
+            }
+            
+            updateSubmitButton();
+        }
+        
+        function updateSubmitButton() {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = !selectedBest || !selectedWorst || selectedBest === selectedWorst;
+        }
+        
+        async function submitAnnotation() {
+            const duration = Date.now() - startTime;
+            
+            try {
+                await PilotAPI.submitAnnotation({
+                    participant_id: participantId,
+                    prompt_id: currentTask.prompt_id,
+                    format: 'bws',
+                    best_choice: selectedBest,
+                    worst_choice: selectedWorst,
+                    duration_ms: duration,
+                    order_shown: orderShown,
+                    response_order: 'ABCD' // Could randomize this
+                });
+                
+                await loadNextTask();
+                
+            } catch (error) {
+                console.error('Error submitting annotation:', error);
+                alert('Failed to submit. Please try again.');
+            }
+        }
+        
+        async function showCompletion() {
+            stopTimer();
+            
+            try {
+                const result = await PilotAPI.completeParticipant(participantId);
+                document.getElementById('completionCode').textContent = result.completion_code;
+                document.getElementById('taskArea').style.display = 'none';
+                document.getElementById('completionArea').style.display = 'block';
+            } catch (error) {
+                console.error('Error completing study:', error);
+            }
+        }
+        
+        async function updateProgress() {
+            try {
+                const progress = await PilotAPI.getProgress(participantId);
+                document.getElementById('progressBar').style.width = `${progress.progress_percent}%`;
+            } catch (error) {
+                console.error('Error updating progress:', error);
+            }
+        }
+        
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                document.getElementById('timer').textContent = `${elapsed}s`;
+            }, 1000);
+        }
+        
+        function resetTimer() {
+            startTime = Date.now();
+            document.getElementById('timer').textContent = '0s';
+        }
+        
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('submitBtn').addEventListener('click', submitAnnotation);
+        
+        // Start
+        init();
+    </script>
+</body>
+</html>

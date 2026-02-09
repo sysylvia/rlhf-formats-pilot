@@ -1,0 +1,32 @@
+============================================================
+EXPERIMENT SUMMARY
+============================================================
+Design: Within-Subjects (Repeated Measures)
+Total Labelers: 8
+Annotations per Labeler: 15
+Prompts per Format: 5
+Total Annotations: 120
+
+FORMAT COUNTERBALANCING:
+  Order 1: pairwise → bws → peer_prediction (2 labelers)
+  Order 2: pairwise → peer_prediction → bws (2 labelers)
+  Order 3: bws → pairwise → peer_prediction (1 labelers)
+  Order 4: bws → peer_prediction → pairwise (1 labelers)
+  Order 5: peer_prediction → pairwise → bws (1 labelers)
+  Order 6: peer_prediction → bws → pairwise (1 labelers)
+
+LABELER ASSIGNMENTS:
+  Labeler 01: pairwise → bws → peer_prediction
+  Labeler 02: pairwise → peer_prediction → bws
+  Labeler 03: bws → pairwise → peer_prediction
+  Labeler 04: bws → peer_prediction → pairwise
+  Labeler 05: peer_prediction → pairwise → bws
+  Labeler 06: peer_prediction → bws → pairwise
+  Labeler 07: pairwise → bws → peer_prediction
+  Labeler 08: pairwise → peer_prediction → bws
+
+ESTIMATED TIMING:
+  Time per annotation: ~4 minutes
+  Time per labeler: ~60 minutes (~1.0 hours)
+
+============================================================

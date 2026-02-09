@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Instructions</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        .section h2 {
+            color: #333;
+            font-size: 22px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .section p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+        
+        .section ul {
+            margin-left: 24px;
+            color: #666;
+            line-height: 1.8;
+        }
+        
+        .section li {
+            margin-bottom: 8px;
+        }
+        
+        .example-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .example-box h3 {
+            color: #667eea;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+        
+        .example-box p {
+            color: #333;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+        
+        .highlight strong {
+            color: #856404;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .highlight p {
+            color: #856404;
+            margin: 0;
+        }
+        
+        .tips {
+            background: #e3f2fd;
+            border: 2px solid #2196F3;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .tips h3 {
+            color: #1565c0;
+            margin-bottom: 12px;
+        }
+        
+        .tips ul {
+            margin-left: 20px;
+        }
+        
+        .tips li {
+            color: #1565c0;
+            margin-bottom: 8px;
+        }
+        
+        .start-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 30px;
+        }
+        
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .format-info {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .format-info h3 {
+            color: #667eea;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Study Instructions</h1>
+        </div>
+        
+        <div class="section">
+            <h2>Your Task</h2>
+            <p>You'll be evaluating AI-generated responses to various prompts. Depending on the study design, you may use one or more evaluation methods:</p>
+            
+            <div class="format-info" id="formatInfo">
+                <!-- Will be populated by JavaScript based on assignment -->
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>General Guidelines</h2>
+            <ul>
+                <li><strong>Quality criteria:</strong> Consider accuracy, helpfulness, clarity, and appropriateness</li>
+                <li><strong>Be thoughtful:</strong> There are no right or wrong answers - we want your genuine opinion</li>
+                <li><strong>Read carefully:</strong> Make sure you understand both the prompt and the responses</li>
+                <li><strong>No rush:</strong> Take your time to make quality judgments</li>
+            </ul>
+        </div>
+        
+        <div class="tips">
+            <h3>💡 Tips for Success</h3>
+            <ul>
+                <li>Use a desktop or laptop (mobile devices not recommended)</li>
+                <li>Find a quiet environment with minimal distractions</li>
+                <li>Your browser will track your time automatically</li>
+                <li>Progress is saved as you go</li>
+            </ul>
+        </div>
+        
+        <div class="highlight">
+            <strong>⏱️ Time Estimate:</strong>
+            <p>This study should take approximately 15-20 minutes to complete. You'll see a progress bar as you work through the tasks.</p>
+        </div>
+        
+        <div class="section">
+            <h2>Completion</h2>
+            <p>After finishing all tasks, you'll receive a unique completion code. <strong>Copy this code</strong> and enter it in Prolific to receive payment.</p>
+        </div>
+        
+        <button class="start-btn" id="startBtn" onclick="startTasks()">Start Evaluation Tasks</button>
+    </div>
+    
+    <script src="shared/api.js"></script>
+    <script>
+        const participantId = localStorage.getItem('participant_id');
+        const formatAssigned = localStorage.getItem('format_assigned');
+        const designType = localStorage.getItem('design_type');
+        
+        // Check if properly registered
+        if (!participantId) {
+            alert('Registration required. Redirecting to start...');
+            window.location.href = 'index.html';
+        }
+        
+        // Display format-specific instructions
+        const formatInfo = document.getElementById('formatInfo');
+        
+        if (designType === 'within') {
+            formatInfo.innerHTML = `
+                <h3>Evaluation Methods (You'll use all three)</h3>
+                <p><strong>Pairwise Comparison:</strong> Compare two responses and choose which is better. Rate your confidence in the choice.</p>
+                <p><strong>Best-Worst Scaling:</strong> View four responses and identify the best and worst ones.</p>
+                <p><strong>Peer Prediction:</strong> Rate a response and predict what others will rate it on average.</p>
+                <p style="margin-top: 12px; color: #667eea; font-weight: 600;">You'll complete about 15-20 evaluations with each method (45-60 total).</p>
+            `;
+        } else {
+            // Between-subjects
+            let formatDesc = '';
+            if (formatAssigned === 'pairwise') {
+                formatDesc = '<p><strong>Pairwise Comparison:</strong> You\'ll compare two responses at a time and choose which is better, then rate your confidence in the choice.</p>';
+            } else if (formatAssigned === 'bws') {
+                formatDesc = '<p><strong>Best-Worst Scaling:</strong> You\'ll view four responses at a time and identify the best and worst ones.</p>';
+            } else if (formatAssigned === 'peer_prediction') {
+                formatDesc = '<p><strong>Peer Prediction:</strong> You\'ll rate individual responses and predict what rating others will give on average.</p>';
+            }
+            
+            formatInfo.innerHTML = `
+                <h3>Your Evaluation Method</h3>
+                ${formatDesc}
+                <p style="margin-top: 12px; color: #667eea; font-weight: 600;">You'll complete approximately 15-20 evaluations.</p>
+            `;
+        }
+        
+        async function startTasks() {
+            const btn = document.getElementById('startBtn');
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+            
+            try {
+                // Record instructions completed
+                await PilotAPI.recordInstructions(participantId);
+                
+                // Redirect to appropriate interface
+                if (designType === 'within') {
+                    // Within-subjects: router will determine format for each task
+                    window.location.href = 'task-router.html';
+                } else {
+                    // Between-subjects: go to assigned format
+                    if (formatAssigned === 'pairwise') {
+                        window.location.href = 'pairwise/index.html?participant_id=' + participantId;
+                    } else if (formatAssigned === 'bws') {
+                        window.location.href = 'bws/index.html?participant_id=' + participantId;
+                    } else if (formatAssigned === 'peer_prediction') {
+                        window.location.href = 'peer-prediction/index.html?participant_id=' + participantId;
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error starting tasks:', error);
+                alert('An error occurred. Please try again.');
+                btn.disabled = false;
+                btn.textContent = 'Start Evaluation Tasks';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading Task...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .loader-container {
+            text-align: center;
+            color: white;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        h2 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="loader-container">
+        <div class="spinner"></div>
+        <h2>Loading Next Task...</h2>
+        <p>Please wait</p>
+    </div>
+    
+    <script src="shared/api.js"></script>
+    <script>
+        const participantId = localStorage.getItem('participant_id');
+        
+        if (!participantId) {
+            alert('Registration required. Redirecting...');
+            window.location.href = 'index.html';
+        }
+        
+        async function routeToTask() {
+            try {
+                // Get next task
+                const result = await PilotAPI.getNextTask(participantId);
+                
+                if (result.done) {
+                    // Study complete
+                    window.location.href = 'completion.html';
+                    return;
+                }
+                
+                // Route to appropriate format interface
+                const format = result.task.format;
+                
+                if (format === 'pairwise') {
+                    window.location.href = 'pairwise/index.html?participant_id=' + participantId;
+                } else if (format === 'bws') {
+                    window.location.href = 'bws/index.html?participant_id=' + participantId;
+                } else if (format === 'peer_prediction') {
+                    window.location.href = 'peer-prediction/index.html?participant_id=' + participantId;
+                } else {
+                    throw new Error('Unknown format: ' + format);
+                }
+                
+            } catch (error) {
+                console.error('Error routing task:', error);
+                alert('An error occurred loading the next task. Please contact the researcher.');
+            }
+        }
+        
+        // Auto-route on load
+        routeToTask();
+    </script>
+</body>
+</html>
