@@ -1,6 +1,6 @@
 // API client for RLHF Pilot Backend
 
-const API_BASE_URL = window.API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = window.API_BASE_URL || 'https://rlhf-formats-pilot-production.up.railway.app/api';
 
 class PilotAPI {
     // Participants
