@@ -1,35 +1,48 @@
-const Database = require('better-sqlite3');
+const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, '../../data/pilot.db');
-const SCHEMA_PATH = path.join(__dirname, '../models/schema.sql');
+const SCHEMA_PATH = path.join(__dirname, '../models/schema-postgres.sql');
 
-function initializeDatabase() {
-    console.log('Initializing database...');
+async function initializeDatabase() {
+    console.log('Initializing PostgreSQL database...');
     
-    // Create data directory if it doesn't exist
-    const dataDir = path.dirname(DB_PATH);
-    if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
+    const connectionString = process.env.DATABASE_URL;
+    
+    if (!connectionString) {
+        throw new Error('DATABASE_URL environment variable not set');
     }
     
-    // Create/open database
-    const db = new Database(DB_PATH);
+    const pool = new Pool({
+        connectionString,
+        ssl: process.env.NODE_ENV === 'production' ? {
+            rejectUnauthorized: false
+        } : false
+    });
     
-    // Read and execute schema
-    const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
-    db.exec(schema);
-    
-    console.log('✅ Database initialized successfully');
-    console.log(`📁 Location: ${DB_PATH}`);
-    
-    db.close();
+    try {
+        // Read and execute schema
+        const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
+        await pool.query(schema);
+        
+        console.log('✅ Database initialized successfully');
+        console.log(`📁 Connection: ${connectionString.split('@')[1]}`); // Hide credentials
+    } catch (error) {
+        console.error('❌ Database initialization failed:', error);
+        throw error;
+    } finally {
+        await pool.end();
+    }
 }
 
 // Run if called directly
 if (require.main === module) {
-    initializeDatabase();
+    initializeDatabase()
+        .then(() => process.exit(0))
+        .catch((error) => {
+            console.error(error);
+            process.exit(1);
+        });
 }
 
 module.exports = { initializeDatabase };

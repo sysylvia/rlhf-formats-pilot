@@ -1,13 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { getDb } = require('../models/db');
+const { getDb, getCurrentExperimentId } = require('../models/db');
 
 // Get all prompts (admin)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
     try {
-        const db = getDb();
-        const prompts = db.prepare('SELECT * FROM prompts').all();
-        res.json({ prompts });
+        const pool = getDb();
+        const experimentId = await getCurrentExperimentId();
+        
+        const result = await pool.query(
+            'SELECT * FROM prompts WHERE experiment_id = $1 OR experiment_id IS NULL',
+            [experimentId]
+        );
+        
+        res.json({ prompts: result.rows });
     } catch (error) {
         console.error('Error fetching prompts:', error);
         res.status(500).json({ error: 'Failed to fetch prompts' });
@@ -15,17 +21,18 @@ router.get('/', (req, res) => {
 });
 
 // Get single prompt
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const db = getDb();
-        const prompt = db.prepare('SELECT * FROM prompts WHERE id = ?').get(id);
+        const pool = getDb();
         
-        if (!prompt) {
+        const result = await pool.query('SELECT * FROM prompts WHERE id = $1', [id]);
+        
+        if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Prompt not found' });
         }
         
-        res.json({ prompt });
+        res.json({ prompt: result.rows[0] });
     } catch (error) {
         console.error('Error fetching prompt:', error);
         res.status(500).json({ error: 'Failed to fetch prompt' });
@@ -33,7 +40,7 @@ router.get('/:id', (req, res) => {
 });
 
 // Add prompt (admin)
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
     try {
         const { text, response_a, response_b, response_c, response_d, source, category } = req.body;
         
@@ -41,17 +48,18 @@ router.post('/', (req, res) => {
             return res.status(400).json({ error: 'text, response_a, and response_b are required' });
         }
         
-        const db = getDb();
-        const stmt = db.prepare(`
-            INSERT INTO prompts (text, response_a, response_b, response_c, response_d, source, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `);
+        const pool = getDb();
+        const experimentId = await getCurrentExperimentId();
         
-        const result = stmt.run(text, response_a, response_b, response_c || null, response_d || null, source || null, category || null);
+        const result = await pool.query(`
+            INSERT INTO prompts (experiment_id, text, response_a, response_b, response_c, response_d, source, category)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id
+        `, [experimentId, text, response_a, response_b, response_c, response_d, source, category]);
         
         res.json({
             success: true,
-            prompt_id: result.lastInsertRowid
+            prompt_id: result.rows[0].id
         });
     } catch (error) {
         console.error('Error adding prompt:', error);
@@ -60,7 +68,7 @@ router.post('/', (req, res) => {
 });
 
 // Bulk add prompts (admin)
-router.post('/bulk', (req, res) => {
+router.post('/bulk', async (req, res) => {
     try {
         const { prompts } = req.body;
         
@@ -68,19 +76,28 @@ router.post('/bulk', (req, res) => {
             return res.status(400).json({ error: 'prompts array required' });
         }
         
-        const db = getDb();
-        const stmt = db.prepare(`
-            INSERT INTO prompts (text, response_a, response_b, response_c, response_d, source, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `);
+        const pool = getDb();
+        const experimentId = await getCurrentExperimentId();
         
-        const insertMany = db.transaction((prompts) => {
+        const client = await pool.connect();
+        
+        try {
+            await client.query('BEGIN');
+            
             for (const p of prompts) {
-                stmt.run(p.text, p.response_a, p.response_b, p.response_c || null, p.response_d || null, p.source || null, p.category || null);
+                await client.query(`
+                    INSERT INTO prompts (experiment_id, text, response_a, response_b, response_c, response_d, source, category)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                `, [experimentId, p.text, p.response_a, p.response_b, p.response_c || null, p.response_d || null, p.source || null, p.category || null]);
             }
-        });
-        
-        insertMany(prompts);
+            
+            await client.query('COMMIT');
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
         
         res.json({
             success: true,

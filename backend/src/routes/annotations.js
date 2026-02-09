@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { getDb } = require('../models/db');
+const { getDb, getCurrentExperimentId } = require('../models/db');
 
 // Submit annotation
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
     try {
         const {
             participant_id,
@@ -29,45 +29,51 @@ router.post('/', (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         
-        const db = getDb();
+        const pool = getDb();
+        const experimentId = await getCurrentExperimentId();
         
         // Validate participant exists
-        const participant = db.prepare('SELECT * FROM participants WHERE id = ?').get(participant_id);
-        if (!participant) {
+        const participantResult = await pool.query(
+            'SELECT * FROM participants WHERE id = $1',
+            [participant_id]
+        );
+        
+        if (participantResult.rows.length === 0) {
             return res.status(404).json({ error: 'Participant not found' });
         }
         
+        const participant = participantResult.rows[0];
+        
         // Insert annotation
-        const stmt = db.prepare(`
+        const result = await pool.query(`
             INSERT INTO annotations (
-                participant_id, prompt_id, format,
+                experiment_id, participant_id, prompt_id, format,
                 choice, confidence,
                 best_choice, worst_choice,
                 own_rating, predicted_avg, confidence_in_prediction,
                 duration_ms, order_shown, response_order
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        
-        const result = stmt.run(
-            participant_id, prompt_id, format,
-            choice || null, confidence || null,
-            best_choice || null, worst_choice || null,
-            own_rating || null, predicted_avg || null, confidence_in_prediction || null,
-            duration_ms || null, order_shown || null, response_order || null
-        );
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            RETURNING id
+        `, [
+            experimentId, participant_id, prompt_id, format,
+            choice, confidence,
+            best_choice, worst_choice,
+            own_rating, predicted_avg, confidence_in_prediction,
+            duration_ms, order_shown, response_order
+        ]);
         
         // Mark task as completed (for within-subjects)
         if (participant.design_type === 'within') {
-            db.prepare(`
+            await pool.query(`
                 UPDATE task_assignments 
-                SET completed = 1 
-                WHERE participant_id = ? AND prompt_id = ? AND format = ?
-            `).run(participant_id, prompt_id, format);
+                SET completed = TRUE 
+                WHERE participant_id = $1 AND prompt_id = $2 AND format = $3
+            `, [participant_id, prompt_id, format]);
         }
         
         res.json({
             success: true,
-            annotation_id: result.lastInsertRowid
+            annotation_id: result.rows[0].id
         });
         
     } catch (error) {
@@ -77,47 +83,70 @@ router.post('/', (req, res) => {
 });
 
 // Get next task for participant
-router.get('/next/:participant_id', (req, res) => {
+router.get('/next/:participant_id', async (req, res) => {
     try {
         const { participant_id } = req.params;
-        const db = getDb();
+        const pool = getDb();
+        const experimentId = await getCurrentExperimentId();
         
-        const participant = db.prepare('SELECT * FROM participants WHERE id = ?').get(participant_id);
+        const participantResult = await pool.query(
+            'SELECT * FROM participants WHERE id = $1',
+            [participant_id]
+        );
         
-        if (!participant) {
+        if (participantResult.rows.length === 0) {
             return res.status(404).json({ error: 'Participant not found' });
         }
         
+        const participant = participantResult.rows[0];
         let nextTask;
         
         if (participant.design_type === 'within') {
             // Get next uncompleted task
-            nextTask = db.prepare(`
+            const taskResult = await pool.query(`
                 SELECT ta.*, p.text, p.response_a, p.response_b, p.response_c, p.response_d
                 FROM task_assignments ta
                 JOIN prompts p ON ta.prompt_id = p.id
-                WHERE ta.participant_id = ? AND ta.completed = 0
+                WHERE ta.participant_id = $1 AND ta.completed = FALSE
                 ORDER BY ta.assigned_at
                 LIMIT 1
-            `).get(participant_id);
+            `, [participant_id]);
+            
+            nextTask = taskResult.rows[0];
         } else {
             // Between-subjects: get random uncompleted prompt for their assigned format
-            const completedPrompts = db.prepare(`
-                SELECT prompt_id FROM annotations WHERE participant_id = ?
-            `).all(participant_id).map(r => r.prompt_id);
+            const completedPromptsResult = await pool.query(
+                'SELECT prompt_id FROM annotations WHERE participant_id = $1',
+                [participant_id]
+            );
             
-            const annotationsPerFormat = parseInt(db.prepare('SELECT value FROM study_config WHERE key = ?').get('annotations_per_format').value);
+            const completedPrompts = completedPromptsResult.rows.map(r => r.prompt_id);
+            
+            const configResult = await pool.query(
+                'SELECT value FROM study_config WHERE experiment_id = $1 AND key = $2',
+                [experimentId, 'annotations_per_format']
+            );
+            
+            const annotationsPerFormat = parseInt(configResult.rows[0]?.value || '15');
             
             if (completedPrompts.length >= annotationsPerFormat) {
                 return res.json({ done: true });
             }
             
-            const placeholders = completedPrompts.length > 0 ? completedPrompts.map(() => '?').join(',') : '';
-            const query = completedPrompts.length > 0 
-                ? `SELECT * FROM prompts WHERE id NOT IN (${placeholders}) ORDER BY RANDOM() LIMIT 1`
-                : `SELECT * FROM prompts ORDER BY RANDOM() LIMIT 1`;
+            let promptResult;
+            if (completedPrompts.length > 0) {
+                promptResult = await pool.query(
+                    'SELECT * FROM prompts WHERE (experiment_id = $1 OR experiment_id IS NULL) AND id != ALL($2) ORDER BY RANDOM() LIMIT 1',
+                    [experimentId, completedPrompts]
+                );
+            } else {
+                promptResult = await pool.query(
+                    'SELECT * FROM prompts WHERE experiment_id = $1 OR experiment_id IS NULL ORDER BY RANDOM() LIMIT 1',
+                    [experimentId]
+                );
+            }
             
-            const prompt = db.prepare(query).get(...completedPrompts);
+            const prompt = promptResult.rows[0];
             
             if (prompt) {
                 nextTask = {

@@ -1,26 +1,59 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const { Pool } = require('pg');
 
-const DB_PATH = path.join(__dirname, '../../data/pilot.db');
-
-let db = null;
+let pool = null;
 
 function getDb() {
-    if (!db) {
-        db = new Database(DB_PATH);
-        db.pragma('journal_mode = WAL'); // Better concurrency
+    if (!pool) {
+        // Connection string from environment variable
+        // Format: postgresql://username:password@host:port/database
+        const connectionString = process.env.DATABASE_URL;
+        
+        if (!connectionString) {
+            throw new Error('DATABASE_URL environment variable not set');
+        }
+        
+        pool = new Pool({
+            connectionString,
+            ssl: process.env.NODE_ENV === 'production' ? {
+                rejectUnauthorized: false
+            } : false
+        });
+        
+        // Test connection
+        pool.query('SELECT NOW()', (err) => {
+            if (err) {
+                console.error('❌ Database connection failed:', err);
+            } else {
+                console.log('✅ Database connected successfully');
+            }
+        });
     }
-    return db;
+    return pool;
 }
 
-function closeDb() {
-    if (db) {
-        db.close();
-        db = null;
+async function closeDb() {
+    if (pool) {
+        await pool.end();
+        pool = null;
     }
+}
+
+// Get current active experiment ID
+async function getCurrentExperimentId() {
+    const pool = getDb();
+    const result = await pool.query(
+        "SELECT id FROM experiments WHERE status = 'active' ORDER BY created_at DESC LIMIT 1"
+    );
+    
+    if (result.rows.length === 0) {
+        throw new Error('No active experiment found. Please create an experiment first.');
+    }
+    
+    return result.rows[0].id;
 }
 
 module.exports = {
     getDb,
-    closeDb
+    closeDb,
+    getCurrentExperimentId
 };

@@ -1,4 +1,4 @@
-const { getDb } = require('../models/db');
+const { getDb, getCurrentExperimentId } = require('../models/db');
 
 // Example prompts for testing
 const examplePrompts = [
@@ -31,35 +31,48 @@ const examplePrompts = [
     }
 ];
 
-function seedPrompts() {
+async function seedPrompts() {
     try {
         console.log('Seeding prompts...');
         
-        const db = getDb();
+        const pool = getDb();
+        const experimentId = await getCurrentExperimentId();
         
         // Check if prompts already exist
-        const existing = db.prepare('SELECT COUNT(*) as cnt FROM prompts').get();
+        const existingResult = await pool.query(
+            'SELECT COUNT(*) as cnt FROM prompts WHERE experiment_id = $1',
+            [experimentId]
+        );
         
-        if (existing.cnt > 0) {
-            console.log(`⚠️  Database already has ${existing.cnt} prompts. Skipping seed.`);
-            console.log('To re-seed, delete data/pilot.db and run npm run init-db first.');
+        const existing = parseInt(existingResult.rows[0].cnt);
+        
+        if (existing > 0) {
+            console.log(`⚠️  Experiment ${experimentId} already has ${existing} prompts. Skipping seed.`);
+            console.log('To re-seed, delete prompts for this experiment first.');
             return;
         }
         
-        const stmt = db.prepare(`
-            INSERT INTO prompts (text, response_a, response_b, response_c, response_d, source, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `);
+        const client = await pool.connect();
         
-        const insertMany = db.transaction((prompts) => {
-            for (const p of prompts) {
-                stmt.run(p.text, p.response_a, p.response_b, p.response_c, p.response_d, p.source, p.category);
+        try {
+            await client.query('BEGIN');
+            
+            for (const p of examplePrompts) {
+                await client.query(`
+                    INSERT INTO prompts (experiment_id, text, response_a, response_b, response_c, response_d, source, category)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                `, [experimentId, p.text, p.response_a, p.response_b, p.response_c, p.response_d, p.source, p.category]);
             }
-        });
+            
+            await client.query('COMMIT');
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
         
-        insertMany(examplePrompts);
-        
-        console.log(`✅ Seeded ${examplePrompts.length} example prompts`);
+        console.log(`✅ Seeded ${examplePrompts.length} example prompts for experiment ${experimentId}`);
         
     } catch (error) {
         console.error('Error seeding prompts:', error);
@@ -69,7 +82,12 @@ function seedPrompts() {
 
 // Run if called directly
 if (require.main === module) {
-    seedPrompts();
+    seedPrompts()
+        .then(() => process.exit(0))
+        .catch((error) => {
+            console.error(error);
+            process.exit(1);
+        });
 }
 
 module.exports = { seedPrompts, examplePrompts };

@@ -29,10 +29,10 @@ app.use((req, res, next) => {
 });
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
     try {
-        const db = getDb();
-        const result = db.prepare('SELECT 1').get();
+        const pool = getDb();
+        await pool.query('SELECT 1');
         res.json({ 
             status: 'healthy', 
             database: 'connected',

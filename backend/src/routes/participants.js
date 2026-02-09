@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
-const { getDb } = require('../models/db');
+const { getDb, getCurrentExperimentId } = require('../models/db');
 
 // Register new participant (from Prolific)
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
     try {
         const { prolific_pid } = req.body;
         
@@ -12,11 +12,17 @@ router.post('/register', (req, res) => {
             return res.status(400).json({ error: 'prolific_pid required' });
         }
         
-        const db = getDb();
+        const pool = getDb();
+        const experimentId = await getCurrentExperimentId();
         
         // Check if already registered
-        const existing = db.prepare('SELECT * FROM participants WHERE prolific_pid = ?').get(prolific_pid);
-        if (existing) {
+        const existingResult = await pool.query(
+            'SELECT * FROM participants WHERE prolific_pid = $1 AND experiment_id = $2',
+            [prolific_pid, experimentId]
+        );
+        
+        if (existingResult.rows.length > 0) {
+            const existing = existingResult.rows[0];
             return res.json({ 
                 participant_id: existing.id,
                 completion_code: existing.completion_code,
@@ -27,8 +33,17 @@ router.post('/register', (req, res) => {
         }
         
         // Get study config
-        const designType = db.prepare('SELECT value FROM study_config WHERE key = ?').get('design_type').value;
-        const formatsEnabled = db.prepare('SELECT value FROM study_config WHERE key = ?').get('formats_enabled').value.split(',');
+        const configResult = await pool.query(
+            'SELECT key, value FROM study_config WHERE experiment_id = $1',
+            [experimentId]
+        );
+        const config = {};
+        configResult.rows.forEach(row => {
+            config[row.key] = row.value;
+        });
+        
+        const designType = config.design_type || 'within';
+        const formatsEnabled = (config.formats_enabled || 'pairwise,bws,peer_prediction').split(',');
         
         // Assign format
         let formatAssigned;
@@ -37,10 +52,13 @@ router.post('/register', (req, res) => {
         } else {
             // Between-subjects: balance assignment
             const counts = {};
-            formatsEnabled.forEach(f => {
-                const count = db.prepare('SELECT COUNT(*) as cnt FROM participants WHERE format_assigned = ?').get(f).cnt;
-                counts[f] = count;
-            });
+            for (const format of formatsEnabled) {
+                const countResult = await pool.query(
+                    'SELECT COUNT(*) as cnt FROM participants WHERE format_assigned = $1 AND experiment_id = $2',
+                    [format, experimentId]
+                );
+                counts[format] = parseInt(countResult.rows[0].cnt);
+            }
             // Assign to format with fewest participants
             formatAssigned = Object.entries(counts).sort((a, b) => a[1] - b[1])[0][0];
         }
@@ -49,30 +67,37 @@ router.post('/register', (req, res) => {
         const completionCode = `RLHF2026-${uuidv4().split('-')[0].toUpperCase()}`;
         
         // Insert participant
-        const stmt = db.prepare(`
-            INSERT INTO participants (prolific_pid, format_assigned, design_type, completion_code, started_at)
-            VALUES (?, ?, ?, ?, ?)
-        `);
+        const insertResult = await pool.query(
+            `INSERT INTO participants (experiment_id, prolific_pid, format_assigned, design_type, completion_code, started_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             RETURNING id`,
+            [experimentId, prolific_pid, formatAssigned, designType, completionCode]
+        );
         
-        const result = stmt.run(prolific_pid, formatAssigned, designType, completionCode, new Date().toISOString());
-        const participantId = result.lastInsertRowid;
+        const participantId = insertResult.rows[0].id;
         
         // For within-subjects, create task assignments
         if (designType === 'within') {
-            const annotationsPerFormat = parseInt(db.prepare('SELECT value FROM study_config WHERE key = ?').get('annotations_per_format').value);
+            const annotationsPerFormat = parseInt(config.annotations_per_format || '15');
             
             // Get random prompts for each format
-            const allPrompts = db.prepare('SELECT id FROM prompts ORDER BY RANDOM() LIMIT ?').all(annotationsPerFormat * formatsEnabled.length);
+            const promptsResult = await pool.query(
+                'SELECT id FROM prompts WHERE experiment_id = $1 OR experiment_id IS NULL ORDER BY RANDOM() LIMIT $2',
+                [experimentId, annotationsPerFormat * formatsEnabled.length]
+            );
             
-            const assignStmt = db.prepare('INSERT INTO task_assignments (participant_id, prompt_id, format) VALUES (?, ?, ?)');
+            const allPrompts = promptsResult.rows;
             
             let idx = 0;
-            formatsEnabled.forEach(format => {
+            for (const format of formatsEnabled) {
                 for (let i = 0; i < annotationsPerFormat; i++) {
-                    assignStmt.run(participantId, allPrompts[idx].id, format);
+                    await pool.query(
+                        'INSERT INTO task_assignments (experiment_id, participant_id, prompt_id, format) VALUES ($1, $2, $3, $4)',
+                        [experimentId, participantId, allPrompts[idx].id, format]
+                    );
                     idx++;
                 }
-            });
+            }
         }
         
         res.json({
@@ -89,12 +114,12 @@ router.post('/register', (req, res) => {
 });
 
 // Record consent
-router.post('/:id/consent', (req, res) => {
+router.post('/:id/consent', async (req, res) => {
     try {
         const { id } = req.params;
-        const db = getDb();
+        const pool = getDb();
         
-        db.prepare('UPDATE participants SET consent_given = 1 WHERE id = ?').run(id);
+        await pool.query('UPDATE participants SET consent_given = TRUE WHERE id = $1', [id]);
         
         res.json({ success: true });
     } catch (error) {
@@ -104,12 +129,12 @@ router.post('/:id/consent', (req, res) => {
 });
 
 // Record instructions completed
-router.post('/:id/instructions', (req, res) => {
+router.post('/:id/instructions', async (req, res) => {
     try {
         const { id } = req.params;
-        const db = getDb();
+        const pool = getDb();
         
-        db.prepare('UPDATE participants SET instructions_completed = 1 WHERE id = ?').run(id);
+        await pool.query('UPDATE participants SET instructions_completed = TRUE WHERE id = $1', [id]);
         
         res.json({ success: true });
     } catch (error) {
@@ -119,18 +144,23 @@ router.post('/:id/instructions', (req, res) => {
 });
 
 // Mark participant as completed
-router.post('/:id/complete', (req, res) => {
+router.post('/:id/complete', async (req, res) => {
     try {
         const { id } = req.params;
-        const db = getDb();
+        const pool = getDb();
         
-        const participant = db.prepare('SELECT completion_code FROM participants WHERE id = ?').get(id);
+        const participantResult = await pool.query(
+            'SELECT completion_code FROM participants WHERE id = $1',
+            [id]
+        );
         
-        if (!participant) {
+        if (participantResult.rows.length === 0) {
             return res.status(404).json({ error: 'Participant not found' });
         }
         
-        db.prepare('UPDATE participants SET completed_at = ? WHERE id = ?').run(new Date().toISOString(), id);
+        const participant = participantResult.rows[0];
+        
+        await pool.query('UPDATE participants SET completed_at = NOW() WHERE id = $1', [id]);
         
         res.json({ 
             success: true,
@@ -143,25 +173,43 @@ router.post('/:id/complete', (req, res) => {
 });
 
 // Get participant progress
-router.get('/:id/progress', (req, res) => {
+router.get('/:id/progress', async (req, res) => {
     try {
         const { id } = req.params;
-        const db = getDb();
+        const pool = getDb();
+        const experimentId = await getCurrentExperimentId();
         
-        const participant = db.prepare('SELECT * FROM participants WHERE id = ?').get(id);
+        const participantResult = await pool.query(
+            'SELECT * FROM participants WHERE id = $1',
+            [id]
+        );
         
-        if (!participant) {
+        if (participantResult.rows.length === 0) {
             return res.status(404).json({ error: 'Participant not found' });
         }
         
+        const participant = participantResult.rows[0];
+        
         // Get completion stats
-        const completed = db.prepare('SELECT COUNT(*) as cnt FROM annotations WHERE participant_id = ?').get(id).cnt;
+        const completedResult = await pool.query(
+            'SELECT COUNT(*) as cnt FROM annotations WHERE participant_id = $1',
+            [id]
+        );
+        const completed = parseInt(completedResult.rows[0].cnt);
         
         let total;
         if (participant.design_type === 'within') {
-            total = db.prepare('SELECT COUNT(*) as cnt FROM task_assignments WHERE participant_id = ?').get(id).cnt;
+            const totalResult = await pool.query(
+                'SELECT COUNT(*) as cnt FROM task_assignments WHERE participant_id = $1',
+                [id]
+            );
+            total = parseInt(totalResult.rows[0].cnt);
         } else {
-            const annotationsPerFormat = parseInt(db.prepare('SELECT value FROM study_config WHERE key = ?').get('annotations_per_format').value);
+            const configResult = await pool.query(
+                'SELECT value FROM study_config WHERE experiment_id = $1 AND key = $2',
+                [experimentId, 'annotations_per_format']
+            );
+            const annotationsPerFormat = parseInt(configResult.rows[0]?.value || '15');
             total = annotationsPerFormat;
         }
         
