@@ -2,7 +2,16 @@ const express = require('express');
 const router = express.Router();
 const { getDb, getCurrentExperimentId } = require('../models/db');
 
-// Get study configuration
+// Admin authentication middleware
+function requireAdmin(req, res, next) {
+    const key = req.headers['x-admin-key'];
+    if (!process.env.ADMIN_API_KEY || key !== process.env.ADMIN_API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+}
+
+// Get study configuration (public — frontend needs this)
 router.get('/config', async (req, res) => {
     try {
         const pool = getDb();
@@ -26,7 +35,7 @@ router.get('/config', async (req, res) => {
 });
 
 // Update study configuration (admin)
-router.post('/config', async (req, res) => {
+router.post('/config', requireAdmin, async (req, res) => {
     try {
         const { key, value } = req.body;
         
@@ -52,7 +61,7 @@ router.post('/config', async (req, res) => {
 });
 
 // Get study statistics (admin)
-router.get('/stats', async (req, res) => {
+router.get('/stats', requireAdmin, async (req, res) => {
     try {
         const pool = getDb();
         const experimentId = await getCurrentExperimentId();
@@ -102,7 +111,7 @@ router.get('/stats', async (req, res) => {
 });
 
 // Export data (admin)
-router.get('/export/:table', async (req, res) => {
+router.get('/export/:table', requireAdmin, async (req, res) => {
     try {
         const { table } = req.params;
         const allowedTables = ['participants', 'annotations', 'prompts', 'task_assignments'];
@@ -128,6 +137,26 @@ router.get('/export/:table', async (req, res) => {
     } catch (error) {
         console.error('Error exporting data:', error);
         res.status(500).json({ error: 'Failed to export data' });
+    }
+});
+
+// Reset study data (admin) — clears participants, annotations, and task_assignments; keeps prompts and config
+router.post('/reset', requireAdmin, async (req, res) => {
+    try {
+        const pool = getDb();
+        const experimentId = await getCurrentExperimentId();
+
+        await pool.query('DELETE FROM annotations WHERE experiment_id = $1', [experimentId]);
+        await pool.query('DELETE FROM task_assignments WHERE experiment_id = $1', [experimentId]);
+        await pool.query('DELETE FROM participants WHERE experiment_id = $1', [experimentId]);
+
+        res.json({
+            success: true,
+            message: 'Cleared annotations, task_assignments, and participants. Prompts and config preserved.'
+        });
+    } catch (error) {
+        console.error('Error resetting study data:', error);
+        res.status(500).json({ error: 'Failed to reset study data' });
     }
 });
 

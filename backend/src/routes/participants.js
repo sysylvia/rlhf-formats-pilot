@@ -88,8 +88,15 @@ router.post('/register', async (req, res) => {
             
             const allPrompts = promptsResult.rows;
             
+            // Counterbalance: shuffle format order per participant (Fisher-Yates)
+            const shuffledFormats = [...formatsEnabled];
+            for (let i = shuffledFormats.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledFormats[i], shuffledFormats[j]] = [shuffledFormats[j], shuffledFormats[i]];
+            }
+
             let idx = 0;
-            for (const format of formatsEnabled) {
+            for (const format of shuffledFormats) {
                 for (let i = 0; i < annotationsPerFormat; i++) {
                     await pool.query(
                         'INSERT INTO task_assignments (experiment_id, participant_id, prompt_id, format) VALUES ($1, $2, $3, $4)',
